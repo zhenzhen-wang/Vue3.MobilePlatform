@@ -2,6 +2,8 @@ import { http } from '@/utils/http';
 
 enum Api {
   Audit = '/Audit',
+  UpdateComment = '/Audit/UpdateComment',
+  UpdateResult = '/Audit/UpdateResult',
 }
 
 export function getEmployeeList(search: object) {
@@ -11,13 +13,13 @@ export function getEmployeeList(search: object) {
   });
 }
 
-export function saveIdlData(formData: string) {
-  return http.post<string>({
+export function updateStatus(updateParams: any) {
+  return http.put<string>({
     url: Api.Audit,
-    data: { formData },
+    data: updateParams,
   });
 }
 export const auditApi = {
   getEmployeeList,
-  saveIdlData,
+  updateStatus,
 };

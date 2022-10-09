@@ -19,6 +19,9 @@ export const useParamStore = defineStore({
     educationList: ['研究生', '本科', '大专', '高中', '中专', '初中及初中以下'],
     jobList: [], //['人资', '物流', 'MIS', '业务', '资财', '财会'],
     marriageList: ['未婚', '已婚', '离婚'],
+    workTypeList: ['IDL', 'DL'],
+    salaryTypeList: ['正式工', '临时工'],
+    companyCodeList: ['MKL', 'MISK'],
 
     /**
      * 0： 面试者已填好简历，待HR审核
@@ -30,14 +33,10 @@ export const useParamStore = defineStore({
       // picker里面默认展示键text的值
       // values必须是数组，当栏位为数值时不可以用values定义
       { text: '待审核', value: '0' },
-      { text: '已审核', value: '1' },
+      { text: '已审核', value: '1,2,3,4,5,6' }, //为了方便查询到这些状态人员，将其状态改为0，方便二次填写或者修改
     ],
-    idlInterviewStatusList: [
+    interviewStatusList: [
       { text: '待面试', value: '1,2' },
-      { text: '已录用', value: '3' },
-    ],
-    dlInterviewStatusList: [
-      { text: '待面试', value: '1' },
       { text: '已录用', value: '3' },
     ],
     idlEmployStatusList: [
@@ -50,10 +49,6 @@ export const useParamStore = defineStore({
       text: 'team',
       // children: 'values',
     },
-
-    workTypeList: ['IDL', 'DL'],
-    salaryTypeList: ['正式工', '临时工'],
-    companyCodeList: ['MKL', 'MISK'],
   }),
   getters: {
     // 类似于computed()

@@ -631,13 +631,13 @@ nextTick(() => {
   margin-bottom: 0px;
 }
 
+// loading样式
 .wrapper {
   display: flex;
   align-items: center;
   justify-content: center;
   height: 100%;
 }
-
 .block {
   width: 120px;
   height: 120px;

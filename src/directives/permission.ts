@@ -12,7 +12,7 @@ import type { App, Directive, DirectiveBinding } from 'vue';
  * Determine whether there is permission
  */
 function hasPermission(value?: RoleEnum | RoleEnum[] | string | string[], def = true): boolean {
-  console.log(value);
+  // console.log(value);
 
   // v-auth后面不跟角色，默认可以看见
   if (!value) {

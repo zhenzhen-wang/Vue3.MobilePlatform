@@ -40,10 +40,12 @@ const showPopup = (id: string): void => {
         :is-link="isLink"
         v-for="item in dataList"
         clickable
-        :key="item.id"
-        @click="showPopup(item.id)"
+        :key="item.id_card_no"
+        @click="showPopup(item.id_card_no)"
       >
-        <van-radio :name="item.id" icon-size="18px">{{ item.name + ' ' + item.id }}</van-radio>
+        <van-radio :name="item.id_card_no" icon-size="18px">{{
+          item.name + ' ' + item.id_card_no
+        }}</van-radio>
       </van-cell>
       <div v-show="dataList.length" class="van-list__finished-text"
         >共计{{ dataList.length }}人，没有更多了</div

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { dataList } from '@/types/base-component';
 import { computed } from '@vue/reactivity';
-import { ref, watch } from 'vue';
+import { onBeforeUpdate, onUpdated, ref, watch } from 'vue';
 
 const emits = defineEmits(['update:modelValue', 'getCurrentId']);
 

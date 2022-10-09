@@ -8,6 +8,7 @@ import type { dataList } from '@/types/base-component';
 import ResumeReview from '../../HrResume/Component/ResumeReview.vue';
 import { Notify } from 'vant';
 import { api } from '@/api';
+import BaseLoading from '../../../components/Utils/BaseLoading.vue';
 
 const onClickLeft = () => history.back();
 
@@ -30,7 +31,7 @@ let list = ref<dataList[]>([]);
 const loading = ref(false);
 
 // 查询
-const onSubmit = async (values: any) => {
+const onSubmit = async () => {
   list.value = [];
   checkedList.value = [];
   loading.value = true;
@@ -38,7 +39,7 @@ const onSubmit = async (values: any) => {
   const result = await api.getEmployeeList(search.value);
   list.value.push(...result);
   if (list.value.length == 0) {
-    Notify({ type: 'danger', message: '未查询到符合条件人员资料' });
+    Notify('未查询到符合条件人员资料');
   }
   // 加载状态结束
   loading.value = false;
@@ -51,13 +52,30 @@ const getCurrentId = (id: string) => {
   currentCheckBoxId.value = id;
 };
 
-// 审核通过&取消审核：参数idcardno，status（通过status：1 取消status：0），type（是否删除其资料）：不删
+// 审核通过&取消审核：参数idcardno，status（通过status：1 取消status：0），delete（是否删除其资料）：不删
+// 加载遮罩层，全域
+let globalLoading = ref(false);
+const update = async (status: string) => {
+  if (!checkedList.value.length) {
+    Notify('请点击选中人员！');
+    return;
+  }
+  globalLoading.value = true;
+  const updateParams = { idCardNoList: checkedList.value, status: status, delete: false };
+  const result = await api.updateStatus(updateParams);
+  if (result !== 'OK') {
+    Notify(result);
+  } else {
+    Notify({ type: 'success', message: '操作成功' });
+  }
+  globalLoading.value = false;
+};
 </script>
 
 <template>
   <!-- 页面头部 -->
   <van-nav-bar title="HR资料审核" left-text="返回" left-arrow @click-left="onClickLeft" />
-  <!-- <van-overlay :show="show" /> -->
+  <base-loading :global-loading="globalLoading"></base-loading>
 
   <!-- 表单查询项 -->
   <van-form @submit="onSubmit">
@@ -117,10 +135,10 @@ const getCurrentId = (id: string) => {
 
   <div v-show="list.length">
     <div style="margin: 16px">
-      <van-button round block type="primary"> 审核通过 </van-button>
+      <van-button round block type="primary" @click="update('1')"> 审核通过 </van-button>
     </div>
     <div style="margin: 16px">
-      <van-button round block type="danger"> 取消审核 </van-button>
+      <van-button round block type="danger" @click="update('0')"> 取消审核 </van-button>
     </div>
     <!-- 审核通过按钮 -->
     <van-cell-group inset> </van-cell-group>
