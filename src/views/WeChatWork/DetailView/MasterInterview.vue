@@ -6,8 +6,12 @@ import ResumeReview from '../../HrResume/Component/ResumeReview.vue';
 import BaseRadioList from '../../../components/List/BaseRadioList.vue';
 import { api } from '@/api';
 import BaseLoading from '../../../components/Utils/BaseLoading.vue';
+import { useParamStore } from '@/stores/parameters';
 
 const onClickLeft = () => history.back();
+
+// 获取填写页面的所有参数
+const paramStore = useParamStore();
 
 // 查询条件
 const search = ref({
@@ -54,7 +58,12 @@ const update = async (status: string) => {
     return;
   }
   globalLoading.value = true;
-  const updateParams = { idCardNoList: [checked.value], status: status, delete: false };
+  const updateParams = {
+    idCardNoList: [checked.value],
+    status: status,
+    delete: false,
+    empno: paramStore.userId,
+  };
   const result = await api.updateStatus(updateParams);
   if (result !== 'OK') {
     Notify(result);

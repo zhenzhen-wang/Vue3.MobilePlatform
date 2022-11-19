@@ -1,7 +1,10 @@
-import { ResultEnum } from '@/enums/httpEnum';
-import type { RequestOptions, Result } from '@/types/axios';
+import { RequestEnum, ResultEnum } from '@/enums/httpEnum';
+import type { CreateAxiosOptions, RequestOptions, Result } from '@/types/axios';
+import { isString } from '@/utils/is';
+import { setObjToUrlParams } from '@/utils';
 import type { AxiosResponse } from 'axios';
 import { Dialog, Notify, Toast } from 'vant';
+import { formatRequestDate, joinTimestamp } from './helper';
 
 /**
  * @description: 处理网络错误
@@ -94,7 +97,7 @@ export const transformRequestHook = (res: AxiosResponse<Result>, options: Reques
   }
 
   // return data;
-  //  这里 code，result，message为 后台统一的字段，需要在 types.ts内修改为项目自己的接口返回格式
+  //  这里 code，result，message为 后台统一的字段，需要在 axios.d.ts内修改为项目自己的接口返回格式
   const { code, result, message } = data;
 
   // 这里逻辑可以根据项目进行修改
@@ -133,4 +136,53 @@ export const transformRequestHook = (res: AxiosResponse<Result>, options: Reques
   }
 
   throw new Error(timeoutMsg || '');
+};
+
+// 请求之前处理config
+export const beforeRequestHook = (config: CreateAxiosOptions, options: RequestOptions) => {
+  const { apiUrl, joinPrefix, joinParamsToUrl, formatDate, joinTime = true, urlPrefix } = options;
+
+  if (joinPrefix) {
+    config.url = `${urlPrefix}${config.url}`;
+  }
+
+  if (apiUrl && isString(apiUrl)) {
+    config.url = `${apiUrl}${config.url}`;
+  }
+  const params = config.params || {};
+  const data = config.data || false;
+  formatDate && data && !isString(data) && formatRequestDate(data);
+  if (config.method?.toUpperCase() === RequestEnum.GET) {
+    if (!isString(params)) {
+      // 给 get 请求加上时间戳参数，避免从缓存中拿数据。
+      config.params = Object.assign(params || {}, joinTimestamp(joinTime, false));
+    } else {
+      // 兼容restful风格
+      config.url = config.url + params + `${joinTimestamp(joinTime, true)}`;
+      config.params = undefined;
+    }
+  } else {
+    if (!isString(params)) {
+      formatDate && formatRequestDate(params);
+      if (Reflect.has(config, 'data') && config.data && Object.keys(config.data).length > 0) {
+        config.data = data;
+        config.params = params;
+      } else {
+        // 非GET请求如果没有提供data，则将params视为data
+        config.data = params;
+        config.params = undefined;
+      }
+      if (joinParamsToUrl) {
+        config.url = setObjToUrlParams(
+          config.url as string,
+          Object.assign({}, config.params, config.data),
+        );
+      }
+    } else {
+      // 兼容restful风格
+      config.url = config.url + params;
+      config.params = undefined;
+    }
+  }
+  return config;
 };

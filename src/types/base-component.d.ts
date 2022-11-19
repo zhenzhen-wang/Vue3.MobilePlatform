@@ -2,6 +2,7 @@
 export type dataList = {
   name: string;
   id_card_no: string;
+  // person_id: string;
 };
 
 export type GridList = {

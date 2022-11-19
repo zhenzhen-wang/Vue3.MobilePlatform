@@ -19,7 +19,7 @@ function hasPermission(value?: RoleEnum | RoleEnum[] | string | string[], def = 
     return def;
   }
 
-  // 获取登录者的权限codelist
+  // TODO:获取登录者的权限codelist,需要请求接口获取
   const allCodeList = ['super']; //permissionStore.getPermCodeList as string[];
   if (!isArray(value)) {
     // 如果value不是数组，则判断value在不在其权限范围内

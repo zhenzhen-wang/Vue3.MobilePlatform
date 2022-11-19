@@ -4,7 +4,12 @@ import axios from 'axios';
 // import qs from 'qs';
 import { cloneDeep } from 'lodash-es';
 import { ContentTypeEnum } from '@/enums/httpEnum';
-import { handleAuthError, handleNetworkError, transformRequestHook } from './handleHooks';
+import {
+  beforeRequestHook,
+  handleAuthError,
+  handleNetworkError,
+  transformRequestHook,
+} from './handleHooks';
 
 /**
  * @description:  axios module
@@ -77,7 +82,7 @@ export class VAxios {
 
     if (params.data) {
       Object.keys(params.data).forEach((key) => {
-        const value = params.data![key];
+        const value = params.data?.[key];
         if (Array.isArray(value)) {
           value.forEach((item) => {
             formData.append(`${key}[]`, item);
@@ -85,7 +90,7 @@ export class VAxios {
           return;
         }
 
-        formData.append(key, params.data![key]);
+        formData.append(key, params.data?.[key]);
       });
     }
 
@@ -136,11 +141,13 @@ export class VAxios {
   }
 
   request<T>(config: AxiosRequestConfig, options?: RequestOptions): Promise<T> {
-    const conf: CreateAxiosOptions = cloneDeep(config);
+    let conf: CreateAxiosOptions = cloneDeep(config);
 
     const { requestOptions } = this.options;
 
     const opt: RequestOptions = Object.assign({}, requestOptions, options);
+
+    if (beforeRequestHook) conf = beforeRequestHook(conf, opt);
 
     conf.requestOptions = opt;
 

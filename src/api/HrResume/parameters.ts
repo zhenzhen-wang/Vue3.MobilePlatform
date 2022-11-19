@@ -4,7 +4,7 @@ enum Api {
   Parameters = '/Parameters',
 }
 
-export function getRecruitPath(lookupType: string, type: string) {
+export function getParameterList(lookupType: string, type: string) {
   return http.get<string[]>({
     url: Api.Parameters,
     params: { lookupType, type },
@@ -12,5 +12,5 @@ export function getRecruitPath(lookupType: string, type: string) {
 }
 
 export const parametersApi = {
-  getRecruitPath,
+  getParameterList,
 };

@@ -9,8 +9,11 @@ import type { dataList } from '@/types/base-component';
 import ResumeReview from '../../HrResume/Component/ResumeReview.vue';
 import BaseLoading from '../../../components/Utils/BaseLoading.vue';
 import { api } from '@/api';
+import BaseField from '../../../components/Form/BaseField.vue';
+import { useRouter } from 'vue-router';
 
-const onClickLeft = () => history.back();
+const router = useRouter();
+const onClickLeft = () => router.back();
 
 // 获取页面所需的所有参数
 const paramStore = useParamStore();
@@ -33,12 +36,14 @@ const checked = ref<string>('');
 const loading = ref(false);
 
 const onSubmit = async () => {
+  //清空面试记录
+  Object.keys(result.value).forEach((k) => (result.value[k as keyof typeof result.value] = ''));
   list.value = [];
   checked.value = '';
   loading.value = true;
 
-  const result = await api.getEmployeeList(search.value);
-  list.value.push(...result);
+  const res = await api.getEmployeeList(search.value);
+  list.value.push(...res);
   if (list.value.length == 0) {
     Notify('未查询到符合条件人员资料');
   }
@@ -48,41 +53,61 @@ const onSubmit = async () => {
 
 // 子组件传递过来的当前的人员身份证id，用于review其详细资料
 const currentCheckBoxId = ref('');
-const getCurrentId = (id: string) => {
+const getCurrentId = async (id: string) => {
   currentCheckBoxId.value = id;
+  // 点击面试者后，带出其主管结论
+  const res = await api.getManagerComment(id);
+  result.value.company = res.company;
+  result.value.add_work_year = res.add_work_year;
+  result.value.dept_name = res.dept_name;
 };
 
 // 回填的结果
 const result = ref({
-  companyCodeVal: '', //公司别代码
-  isAddWorkYearVal: '', //是否续年资
-  deptName: '', //部门名称
-  outWorkYear: '', // 公司外年资
-  jobAppellation: '', // 职称
-  jobDegree: '', // 职等
-  arrivalDate: '', // 导致日期
+  company: '', // 公司别代码
+  dept_name: '', // 部门名称
+  add_work_year: '', // 是否续年资
+  out_work_year: '', // 公司外年资
+  job_appellation: '', // 职称
+  job_degree: '', // 职等
+  arrival_date: '', // 导致日期
+  id_card_no: '',
 });
-// 完成录用，参数：idcardno，status(idl:2) 及职等职称等，单独接口
-const confirm = (values: object) => {
-  console.log('submit1', values);
-};
 
-// 不予录用，参数：idcardno，status(6)，type（是否删除其资料）：删 与hr共用接口
+// 点击按钮，录用或不录用
 let globalLoading = ref(false);
-const cancel = async () => {
+const buttonClick = async (type: string) => {
   if (!checked.value.length) {
     Notify('请点击选中人员！');
     return;
   }
+  let resResult;
   globalLoading.value = true;
-  const updateParams = { idCardNoList: [checked.value], status: '6', delete: true };
-  const result = await api.updateStatus(updateParams);
-  if (result !== 'OK') {
-    Notify(result);
+
+  // 不予录用，参数：idcardno，status(6)，delete（是否删除其资料）：删 与hr共用接口（提示是否确认删除其资料）
+  if (type == 'cancel') {
+    const updateParams = {
+      idCardNoList: [checked.value],
+      status: '6',
+      delete: true,
+      empno: paramStore.userId,
+    };
+    resResult = await api.updateStatus(updateParams);
+  } else {
+    // 完成录用，参数：idcardno，status(idl:3) 及职等职称等，单独接口
+    result.value.id_card_no = checked.value;
+    resResult = await api.insertResult(result.value);
+  }
+
+  if (resResult !== 'OK') {
+    Notify(resResult);
   } else {
     Notify({ type: 'success', message: '操作成功' });
   }
   globalLoading.value = false;
+  //清空面试记录
+  checked.value = '';
+  Object.keys(result.value).forEach((k) => (result.value[k as keyof typeof result.value] = ''));
 };
 </script>
 
@@ -138,31 +163,32 @@ const cancel = async () => {
     <resume-review :id="currentCheckBoxId" />
   </base-radio-list>
 
-  <van-form @submit="confirm">
+  <van-form @submit="buttonClick" ref="submitRef">
     <!-- 面试记录 -->
     <van-cell-group inset :style="{ 'margin-top': '15px' }">
       <van-divider content-position="left"> 面试记录 </van-divider>
 
       <!-- 公司别、部门名称，IDL/DL都有 -->
       <base-picker
-        v-model="result.companyCodeVal"
+        v-model="result.company"
         name="companyCode"
         label="公司别"
         placeholder="请选择公司别"
         :columns="paramStore.companyCodeList"
       ></base-picker>
       <van-field
-        v-model="result.deptName"
+        v-model="result.dept_name"
         name="deptName"
         label="部门名称"
         placeholder="请输入部门名称或代码"
         required
         :rules="[{ required: true, message: '请填写部门名称或代码' }]"
+        clearable
       />
 
       <!-- 1.是否續年資 -->
       <base-picker
-        v-model="result.isAddWorkYearVal"
+        v-model="result.add_work_year"
         v-if="search.work_type === 'IDL'"
         name="isAddWorkYear"
         label="是否續年資"
@@ -170,37 +196,37 @@ const cancel = async () => {
         :columns="paramStore.judgeList"
       ></base-picker>
 
-      <van-field
-        v-model="result.outWorkYear"
-        v-if="result.isAddWorkYearVal === 'Y'"
-        name="deptName"
+      <base-field
         label="公司外年资"
-        placeholder="请输入公司外年资"
-        required
-        :rules="[{ required: true, message: '请填写公司外年资' }]"
-      />
+        v-model="result.out_work_year"
+        v-if="result.add_work_year === 'Y'"
+        validate-type="number"
+        >年</base-field
+      >
       <van-field
-        v-model="result.jobAppellation"
+        v-model="result.job_appellation"
         v-if="search.work_type === 'IDL'"
         name="deptName"
         label="职称"
         placeholder="请输入职称"
         required
         :rules="[{ required: true, message: '请填写职称' }]"
+        clearable
       />
       <van-field
-        v-model="result.jobDegree"
+        v-model="result.job_degree"
         v-if="search.work_type === 'IDL'"
         name="deptName"
         label="职等"
         placeholder="请输入职等"
         required
         :rules="[{ required: true, message: '请填写职等' }]"
+        clearable
       />
 
       <!-- 录用者到职日期 -->
       <base-date-picker
-        v-model="result.arrivalDate"
+        v-model="result.arrival_date"
         v-if="search.work_type === 'IDL'"
         name="arrivalDate"
         label="到职日期"
@@ -213,7 +239,7 @@ const cancel = async () => {
       </div>
       <!-- 不予录用按钮 -->
       <div style="margin: 16px">
-        <van-button round block type="danger" @click="cancel"> 不予录用 </van-button>
+        <van-button round block type="danger" @click="buttonClick('cancel')"> 不予录用 </van-button>
       </div>
     </van-cell-group>
   </van-form>

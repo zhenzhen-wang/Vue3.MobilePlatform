@@ -2,8 +2,13 @@ import { http } from '@/utils/http';
 
 enum Api {
   Audit = '/Audit',
-  UpdateComment = '/Audit/UpdateComment',
-  UpdateResult = '/Audit/UpdateResult',
+  Result = '/Audit/InsertResult',
+}
+
+export function getManagerComment(idCardNo: string) {
+  return http.get<any>({
+    url: Api.Audit + '/' + idCardNo,
+  });
 }
 
 export function getEmployeeList(search: object) {
@@ -19,7 +24,25 @@ export function updateStatus(updateParams: any) {
     data: updateParams,
   });
 }
+
+export function insertComment(params: any) {
+  return http.post<string>({
+    url: Api.Audit,
+    data: params,
+  });
+}
+
+export function insertResult(params: any) {
+  return http.post<string>({
+    url: Api.Result,
+    data: params,
+  });
+}
+
 export const auditApi = {
+  getManagerComment,
   getEmployeeList,
   updateStatus,
+  insertComment,
+  insertResult,
 };

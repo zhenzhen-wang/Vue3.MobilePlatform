@@ -5,10 +5,10 @@ import { defineStore } from 'pinia';
 //   recruitPathList: string[];
 //   groupCompanyList: string[];
 // }
-
 export const useParamStore = defineStore({
   id: 'parameters', //仓库id 唯一
   state: (): any => ({
+    userId: '', //从企业微信接口获取到的登录者的工号
     recruitPathList: [], //['BOSS直聘', '前程無憂', '智聯招聘', '校招', '人才市場', '獵聘網', '內薦'],
     groupCompanyList: [],
     sexList: ['男', '女'],
@@ -56,9 +56,28 @@ export const useParamStore = defineStore({
   },
   actions: {
     async initParams() {
-      this.recruitPathList = await api.getRecruitPath('RecruitPath', 'I'); //.then 可以获取请求的response
-      this.jobList = await api.getRecruitPath('JobType', 'I');
-      this.groupCompanyList = await api.getRecruitPath('Company', 'A');
+      this.recruitPathList = await api.getParameterList('RecruitPath', 'I'); //.then 可以获取请求的response
+      this.jobList = await api.getParameterList('JobType', 'I');
+      this.groupCompanyList = await api.getParameterList('Company', 'A');
     },
+    setUserId(usrId: string) {
+      this.userId = usrId;
+    },
+  },
+  // 数据持久化
+  // persist: true,
+  // 持久化存储插件其他配置
+  persist: {
+    enabled: true,
+    strategies: [
+      {
+        // 修改存储中使用的键名称，默认为当前 Store的 id:parameters
+        key: 'parametersStore',
+        // 默认为 sessionStorage
+        // storage: localStorage,
+        // 部分持久化状态的点符号路径数组，[]意味着没有状态被持久化(默认为undefined，持久化整个状态)
+        paths: ['userId'],
+      },
+    ],
   },
 });

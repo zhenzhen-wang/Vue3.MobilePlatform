@@ -8,7 +8,7 @@ const props = defineProps<{
   label: string;
   type?: FieldType | undefined; //vant：digit调起数字键盘等
   placeholder?: string;
-  modelValue: string;
+  modelValue: string | number;
   noRequired?: boolean; // 是否显示必填星号*,不指定则默认必填
   validateType?: string; // 验证类型（手机号或者邮箱等）
 }>();
@@ -19,17 +19,25 @@ const result = computed({
 });
 
 const validator = () => {
-  switch (props.validateType) {
-    case 'number':
-      return /^\d+$/.test(result.value);
-    case 'phone':
-      return /^1(?:3\d|4[4-9]|5[0-35-9]|6[67]|7[013-8]|8\d|9\d)\d{8}$/.test(result.value);
-    case 'email':
-      return /^[a-z0-9]+([._\\-]*[a-z0-9])*@([a-z0-9]+[-a-z0-9]*[a-z0-9]+.){1,63}[a-z0-9]+$/.test(
-        result.value,
-      );
-    default:
-      return true;
+  // 值不为空则检查其是否符合类型要求（用于选填的类型验证）
+  if (result.value) {
+    switch (props.validateType) {
+      case 'number':
+        return /^\d+$/.test(result.value as string);
+      case 'phone':
+        return /^1(?:3\d|4[4-9]|5[0-35-9]|6[67]|7[013-8]|8\d|9\d)\d{8}$/.test(
+          result.value as string,
+        );
+      case 'email':
+        return /^[a-z0-9]+([._\\-]*[a-z0-9])*@([a-z0-9]+[-a-z0-9]*[a-z0-9]+.){1,63}[a-z0-9]+$/.test(
+          result.value as string,
+        );
+      default:
+        return true;
+    }
+  } else {
+    // 为空则不验证类型
+    return true;
   }
 };
 // 如果传过来的placeholder为空，则默认填写请填写${label}.不为空，则填写placeholder

@@ -5,7 +5,6 @@ import type { App } from 'vue';
 const registerDirective = {
   // https://vuejs.org/guide/reusability/plugins.html#introduction
   install(app: App<HTMLElement>) {
-    console.log('myCustomDirective install');
     app.directive('focus', {
       // https://vuejs.org/guide/reusability/custom-directives.html#directive-hooks
       mounted(el) {

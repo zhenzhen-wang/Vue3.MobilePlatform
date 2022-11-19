@@ -2,7 +2,7 @@ import { api } from '@/api';
 import { addWaterMark, getDate, zipFile } from '@/utils';
 import { defineStore } from 'pinia';
 import { Dialog, Notify, type UploaderFileListItem } from 'vant';
-import { ref, toRefs } from 'vue';
+import { ref } from 'vue';
 
 export const useIdlStore = defineStore({
   id: 'idlUser', //仓库id 唯一
@@ -22,7 +22,7 @@ export const useIdlStore = defineStore({
         current_address: '',
         emergency_name: '',
         emergency_tel: '',
-        // salary_type: '',
+        salary_type: '正式工',
         recruit_path: '',
         // batch_no: '',
         accept_flag: false,
@@ -104,6 +104,7 @@ export const useIdlStore = defineStore({
       //   { lookup_code: 'AA05', result: '', score: '0' },
       // ],
     },
+    phoneVerifyResult: false,
     // 临时存储，未缓存
     // （缓存talentFile后，读取只能读到第一个）
     talentFile: ref<UploaderFileListItem[][]>([]),
@@ -135,8 +136,9 @@ export const useIdlStore = defineStore({
     async getFrontIdCardInfo(base64: string) {
       try {
         // 请求百度api接口获取身份证信息（正面）
-        const res = await api.getIdCardInfo(base64, 'front');
+        const res = await api.postIdCard(base64, 'front');
         const idCardInfo = JSON.parse(res);
+        // console.log(idCardInfo);
 
         // 验证IDcard是否有风险
         // risk_type:normal-正常身份证；copy-复印件；temporary-临时身份证；screen-翻拍；unknown-其他未知情况
@@ -162,12 +164,12 @@ export const useIdlStore = defineStore({
         }
 
         // 1. 查询此人是否已有资料，并且资料未经HR访谈确认,有则带出他已填写的资料,即status=0
-        const data = await api.queryDetail(idCardInfo.words_result.公民身份号码.words, '0');
+        const data = await api.getDetailByIdStatus(idCardInfo.words_result.公民身份号码.words, '0');
         //有资料，则自动带出。人员可以根据此资料修改
         if (Object.keys(data).length > 0) {
           //#region 格式化数据
           //身份证信息，格式化日期，去掉时分秒
-          data.hr_base_info.birthday = data.hr_base_info.birthda.substr(0, 10);
+          data.hr_base_info.birthday = data.hr_base_info.birthday.substr(0, 10);
           data.hr_base_info.id_expire_date = data.hr_base_info.id_expire_date.substr(0, 10);
 
           for (const value of data.hr_education) {
@@ -195,12 +197,14 @@ export const useIdlStore = defineStore({
         }
 
         // 2. 检查此人身份证号是否有效，是否未满16周岁
-        const msg = await api.checkIdNo(idCardInfo.words_result.公民身份号码.words);
-        if (msg) {
-          // 异常信息不为空，则提示信息并退出
-          Notify(msg);
-          return;
-        }
+        const result = await api.checkIdCard(idCardInfo.words_result.公民身份号码.words);
+        // 返回值为空，即有异常，则退出
+        if (!result) return;
+        // {
+        // 异常信息不为空，则提示信息并退出
+        // Notify(msg);
+        // return;
+        // }
 
         // 3. 满足条件，则将读取的身份证信息显示到UI
         {
@@ -229,7 +233,7 @@ export const useIdlStore = defineStore({
     // 请求身份证反面信息
     async getBackIdCardInfo(base64: string) {
       // 请求百度api接口获取身份证信息(反面)
-      const res = await api.getIdCardInfo(base64, 'back');
+      const res = await api.postIdCard(base64, 'back');
       const idCardInfo = JSON.parse(res);
 
       if (idCardInfo.image_status !== 'normal') {
@@ -379,11 +383,11 @@ export const useIdlStore = defineStore({
     },
 
     // 新增attachment附件
-    addAttachment(name: string, src: string, file_type: string) {
+    addAttachment(name: string, src: string, type: string) {
       this.form.hr_attachment.push({
         pic_name: name,
         pic_src: src,
-        file_type: file_type,
+        file_type: type,
       });
     },
     // 删除attachment附件
@@ -392,13 +396,12 @@ export const useIdlStore = defineStore({
     },
     //#endregion
 
-    // 将毕业证书及技能证书移到attachment
+    // 将毕业证书及技能证书,手写签名移到attachment，便于统一上传
     copyFileToAttachment() {
       // 移除attchment中已经存在的毕业证书及技能证书
-      // this.delAttachment('graduate_certificate');
-      // this.delAttachment('talent_certificate');
-      // this.delAttachment('esign');
-
+      this.delAttachment('graduate_certificate');
+      this.delAttachment('talent_certificate');
+      this.delAttachment('esign');
       // copy毕业证书
       for (const item of this.educationFile) {
         this.addAttachment('毕业证书', item.content as string, 'graduate_certificate');
@@ -414,59 +417,48 @@ export const useIdlStore = defineStore({
       if (this.hr_esign_attach.pic_src) this.form.hr_attachment.push(this.hr_esign_attach);
     },
 
-    // TODO:防呆
-    isProofOk(): boolean {
-      console.log(this.form.hr_attachment);
-      // 将毕业证书及技能证书移到attachment
-      //this.copyFileToAttachment();
-      // copy毕业证书
-      for (const item of this.educationFile) {
-        this.addAttachment('毕业证书', item.content as string, 'graduate_certificate');
-      }
-      // copy技能
-      for (const item of this.hr_talent_attach) {
-        // 如果pic_src不为空，则将其移至attachment中
-        if (item.pic_src) {
-          this.addAttachment(item.pic_name, item.pic_src, 'talent_certificate');
+    // 防呆
+    proofIsOk(): boolean {
+      try {
+        // 将毕业证书及技能证书,手写签名移到attachment，便于统一上传
+        this.copyFileToAttachment();
+
+        // 1. 身份证上传判断
+        if (!this.form.hr_attachment.filter((e) => e.file_type == 'idcard_front')[0].pic_src) {
+          Notify('必须上传身份证正面照片');
+          return false;
         }
-      }
-      // copy手写签名,如果pic_src不为空
-      if (this.hr_esign_attach.pic_src) this.form.hr_attachment.push(this.hr_esign_attach);
-      console.log(this.form.hr_attachment);
+        if (!this.form.hr_attachment.filter((e) => e.file_type == 'idcard_back')[0].pic_src) {
+          Notify('必须上传身份证反面照片');
+          return false;
+        }
 
-      // 1. 身份证上传判断
-      if (!this.form.hr_attachment.filter((e) => (e.file_type = 'idcard_front'))[0].pic_src) {
-        Notify('必须上传身份证正面照片');
-        return false;
-      }
-      if (!this.form.hr_attachment.filter((e) => (e.file_type = 'idcard_back'))[0].pic_src) {
-        Notify('必须上传身份证反面照片');
-        return false;
-      }
-
-      // 2.技能证书判断
-      if (this.form.hr_base_info.has_talent) {
-        for (const item of this.hr_talent_attach) {
-          if (!item.pic_src) {
-            // 如果技能证书为空，则报错
-            Notify('必须上传对应技能证书');
-            return false;
+        // 2.技能证书判断
+        if (this.form.hr_base_info.has_talent) {
+          for (const item of this.hr_talent_attach) {
+            if (!item.pic_src) {
+              // 如果技能证书为空，则报错
+              Notify('打开switch按钮，则必须上传对应技能证书');
+              return false;
+            }
           }
         }
-      }
 
-      // 3.毕业证书
-      if (this.form.hr_education[0].graduated === 'Y' && this.educationFile.length < 1) {
-        Notify('已经毕业，则必须上传毕业证书');
+        // 3.毕业证书
+        if (this.form.hr_education[0].graduated === 'Y' && this.educationFile.length < 1) {
+          Notify('已经毕业，则必须上传毕业证书');
+          return false;
+        }
+
+        // 4.手写签名
+        if (!this.hr_esign_attach.pic_src) {
+          Notify('必须手写签名');
+          return false;
+        }
+      } catch (error: any) {
+        Notify(error.toString());
         return false;
       }
-
-      // 4.手写签名
-      if (!this.hr_esign_attach.pic_src) {
-        Notify('必须手写签名');
-        return false;
-      }
-
       return true;
     },
 

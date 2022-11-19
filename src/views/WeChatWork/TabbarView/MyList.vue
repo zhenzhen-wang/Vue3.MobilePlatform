@@ -34,10 +34,10 @@ const list = [
   <!-- 搜索框 -->
   <base-search @searchChange="getItem" placeholder="请输入名称检索"></base-search>
 
-  <!-- 明细列表 -->
-  <div style="margin-top: 5px">
+  <!-- 明细列表 ,暂未开发-->
+  <!-- <div style="margin-top: 5px">
     <base-swipe-list :cellList="list" @preview="previewDetail" />
-  </div>
+  </div> -->
 </template>
 
 <style lang="scss" scoped></style>

@@ -47,6 +47,8 @@ import {
   Radio,
   ImagePreview,
   Skeleton,
+  PasswordInput,
+  NumberKeyboard,
 } from 'vant';
 
 export function registerGlobVant(app: App<Element>) {
@@ -91,4 +93,6 @@ export function registerGlobVant(app: App<Element>) {
   app.use(Radio);
   app.use(ImagePreview);
   app.use(Skeleton);
+  app.use(PasswordInput);
+  app.use(NumberKeyboard);
 }

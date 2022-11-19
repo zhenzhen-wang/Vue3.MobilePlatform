@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { dataList } from '@/types/base-component';
 import { computed } from '@vue/reactivity';
-import { onBeforeUpdate, onUpdated, ref, watch } from 'vue';
+import { ref, watch } from 'vue';
 
 const emits = defineEmits(['update:modelValue', 'getCurrentId']);
 
@@ -68,7 +68,7 @@ watch(allChecked, () => {
   <!-- 弹出框显示面试者的详细资料 -->
   <van-popup v-model:show="show" position="bottom" round closeable :style="{ height: '90%' }">
     <!-- 面试者详细资料组件 -->
-    <slot></slot>
+    <slot v-if="show"></slot>
   </van-popup>
 
   <!-- 分割线 -->

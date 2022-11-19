@@ -14,9 +14,9 @@ function createAxios(opt?: Partial<CreateAxiosOptions>) {
         // authentication schemes，e.g: Bearer
         // authenticationScheme: 'Bearer',
         authenticationScheme: '',
-        timeout: 100 * 1000,
+        timeout: 200 * 1000,
         // 基础接口地址
-        baseURL: import.meta.env.VITE_GLOB_API_URL,
+        // baseURL: import.meta.env.VITE_GLOB_API_URL,
 
         headers: { 'Content-Type': ContentTypeEnum.JSON },
         // 如果是form-data格式
@@ -36,7 +36,7 @@ function createAxios(opt?: Partial<CreateAxiosOptions>) {
           // 消息提示类型
           errorMessageMode: 'message',
           // 接口地址
-          // apiUrl: import.meta.env.VITE_GLOB_API_URL,
+          apiUrl: import.meta.env.VITE_GLOB_API_URL,
           // 接口拼接地址
           urlPrefix: import.meta.env.VITE_GLOB_API_URL_PREFIX,
           //  是否加入时间戳
@@ -54,10 +54,11 @@ function createAxios(opt?: Partial<CreateAxiosOptions>) {
 
 export const http = createAxios();
 
-// other api url
-// export const otherHttp = createAxios({
-//   requestOptions: {
-//     apiUrl: 'xxx',
-//     urlPrefix: 'xxx',
-//   },
-// });
+// 微信,暂时未使用，如果使用需要修改transformRequestHook方法
+// transformRequestHook目前处理的数据是跟necoreapi返回的数据格式想对应的
+// 兼容微信的返回数据格式，需要调整transformRequestHook方法
+export const wechatHttp = createAxios({
+  requestOptions: {
+    apiUrl: import.meta.env.VITE_GLOB_WECHAT_URL,
+  },
+});

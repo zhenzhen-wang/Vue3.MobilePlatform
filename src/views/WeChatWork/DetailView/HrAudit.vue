@@ -9,8 +9,9 @@ import ResumeReview from '../../HrResume/Component/ResumeReview.vue';
 import { Notify } from 'vant';
 import { api } from '@/api';
 import BaseLoading from '../../../components/Utils/BaseLoading.vue';
+import router from '@/router';
 
-const onClickLeft = () => history.back();
+const onClickLeft = () => router.push('/HomeList'); //history.back();
 
 // 获取填写页面的所有参数
 const paramStore = useParamStore();
@@ -61,7 +62,12 @@ const update = async (status: string) => {
     return;
   }
   globalLoading.value = true;
-  const updateParams = { idCardNoList: checkedList.value, status: status, delete: false };
+  const updateParams = {
+    idCardNoList: checkedList.value,
+    status: status,
+    delete: false,
+    empno: paramStore.userId,
+  };
   const result = await api.updateStatus(updateParams);
   if (result !== 'OK') {
     Notify(result);

@@ -3,7 +3,7 @@ import { computed } from 'vue';
 
 const props = defineProps<{
   modelValue: boolean;
-  accept: boolean;
+  accept: boolean | string;
 }>();
 
 const emits = defineEmits(['update:modelValue', 'update:accept']);
@@ -41,9 +41,11 @@ const agree = () => {
     <van-cell>
       <template #value>
         <van-checkbox label-disabled v-model="accept_flag" shape="square" icon-size="16px">
-          本人已认真阅读并同意签署<a style="color: #1989fa" @click="showPopup = true"
-            >《 员工个人信息收集告知同意书》 </a
-          >，且以上所有信息真实有效，如有隐瞒，接受开出处分，录用后，若发生重大舞弊行为，所造成一切后果由本人承担，三等亲家属将负以连带责任，与公司无关。
+          <label style="color: grey">
+            本人已认真阅读并同意签署<a style="color: #1989fa" @click="showPopup = true"
+              >《 员工个人信息收集告知同意书》 </a
+            >，且以上所有信息真实有效，如有隐瞒，接受开出处分，录用后，若发生重大舞弊行为，所造成一切后果由本人承担，三等亲家属将负以连带责任，与公司无关。
+          </label>
         </van-checkbox>
       </template>
     </van-cell>

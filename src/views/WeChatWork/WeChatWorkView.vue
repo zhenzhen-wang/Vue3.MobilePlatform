@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import BaseTabbar from '@/components/Utils/BaseTabbar.vue';
 import { RouterView } from 'vue-router';
+
 const list = [
   {
     id: 1,

@@ -1,5 +1,6 @@
 import { createApp } from 'vue';
 import { createPinia } from 'pinia';
+import piniaPersist from 'pinia-plugin-persist';
 import { registerGlobVant } from './plugins';
 import App from './App.vue';
 import router from './router';
@@ -22,7 +23,10 @@ app.directive('focus',{}): 直接注册全局指令
 app.component('button',component): 直接注册自定义组件 
 */
 
-app.use(createPinia());
+const store = createPinia();
+store.use(piniaPersist);
+app.use(store);
+
 app.use(router);
 
 app.mount('#app');

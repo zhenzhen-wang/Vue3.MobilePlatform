@@ -1,16 +1,20 @@
 <script setup lang="ts">
 import { Collapse, CollapseItem, Dialog, Notify } from 'vant';
-import { nextTick, onBeforeMount, onUnmounted, ref, toRefs, watch } from 'vue';
+import { nextTick, onUnmounted, ref, toRefs, watch } from 'vue';
 import { useIdlStore } from '@/stores/user';
 import { useParamStore } from '@/stores/parameters';
 import { storeToRefs } from 'pinia';
 import BasePicker from '@/components/Form/BasePicker.vue';
 import BaseDatePicker from '@/components/Form/BaseDatePicker.vue';
-import BaseEsign from '@/components/Esign/BaseEsign.vue';
 import BaseField from '@/components/Form/BaseField.vue';
-import AcceptCollect from '../Component/AcceptCollect.vue';
 import { api } from '@/api';
-import router from '@/router';
+import { useRouter } from 'vue-router';
+import { defineAsyncComponent } from 'vue';
+const BaseLoading = defineAsyncComponent(() => import('@/components/Utils/BaseLoading.vue'));
+const AcceptCollect = defineAsyncComponent(() => import('../Component/AcceptCollect.vue'));
+const BaseEsign = defineAsyncComponent(() => import('@/components/Esign/BaseEsign.vue'));
+
+const router = useRouter();
 
 //#region 设置全局样式配置
 // themeVars 内的值会被转换成对应 CSS 变量
@@ -45,32 +49,27 @@ watch([() => base.value.has_relationship, relation], idlStore.watchRelationStatu
 watch([() => base.value.has_talent, hr_talent_attach], idlStore.watchTalentStatus);
 
 //#region 页面初始化信息
+const placeholder = '无需填写，由身份证上传自动带出';
 // 折叠面板状态，默认全部打开
-const activeName = ref(['1', '2', '3', '4', '5', '6', '7', '8', '9']);
+const activeName = ref(['1', '2', '3', '4', '5', '6', '7', '8']);
 
-// 控制个人信息弹出框的显示与隐藏
-const showPopup = ref(false);
+// 控制个人信息弹出框的显示与隐藏,一打开页面即打开个人信息弹出框
+const showPopup = ref(true);
+
+// 初始化加载localstorage中的表单信息
+if (localStorage.getItem('resume_info')) idlStore.setInfo();
+
+// 初始化页面参数
+paramStore.initParams();
 
 // 加载遮罩层，全域
 let globalOverlay = ref(false);
 
 let timer: any;
-// 初始化加载localstorage中的表单信息
-onBeforeMount(() => {
-  if (localStorage.getItem('resume_info')) idlStore.setInfo();
-
-  // 一打开页面即打开个人信息弹出框
-  // showPopup.value = true;
-
-  // 初始化页面参数
-  paramStore.initParams();
-
-  // 定时缓存信息存放到localStorage
-  timer = setInterval(() => {
-    idlStore.bufferInfo();
-    console.log('ok');
-  }, 10 * 1000);
-});
+// 定时缓存信息存放到localStorage
+timer = setInterval(() => {
+  idlStore.bufferInfo();
+}, 15 * 1000);
 // 需要在页面销毁时，销毁定时器，否则定时器一直运作
 onUnmounted(() => {
   clearInterval(timer);
@@ -110,50 +109,74 @@ const getImg = (val: string) => {
 };
 //#endregion
 
+//#region 点击提交，先进行手机号码验证，通过则上传资料到DB，失败提示error，停止上传
+const inputCode = ref('');
+const showKeyboard = ref(false);
+const showDialog = ref(false);
+let returnCode: string;
+
 // 表单fail，验证失败时执行，errorInfo为失败的信息数组
 //  native-type="submit"，触发表单验证（验证失败触发failed事件，成功触发submit事件）
 const onFailed = (errorInfo: any) => {
   Notify(errorInfo.errors[0].message);
-  console.log('failed', errorInfo);
+  // console.log('failed', errorInfo);
+};
+// 点击提交按钮（验证成功，触发submit事件）
+const onsubmit = async () => {
+  // 数据提交前的防呆（主要判断附件是否上传）:有异常则退出
+  if (!idlStore.proofIsOk()) return;
+  // 请求发送短信api
+  returnCode = await api.sendSms(base.value.telphone);
+  // 返回的验证码不为空，则打开输入验证的弹出框
+  if (returnCode) showDialog.value = true;
 };
 
-// 保存数据：表单submit,验证通过的时候执行（即input即picker控件已验证通过）
-const onSubmit = async (values: object) => {
-  console.log('submit', values);
+// 点击手机号验证按钮
+const confirmDialog = () => {
+  if (returnCode == inputCode.value) {
+    Notify({ type: 'success', message: '手机号验证成功' });
+    inputCode.value = '';
+    // 手机号验证成功，则上传资料
+    saveInfo();
+    return true;
+  } else {
+    Notify('手机号验证码输入错误，请重新输入');
+    inputCode.value = '';
+    return false;
+  }
+};
+
+// 保存数据
+const saveInfo = async () => {
   // 打开遮罩层
   globalOverlay.value = true;
+  try {
+    // 加水印压缩附件
+    await idlStore.zipAddWater();
 
-  // TODO:数据提交前的防呆（主要判断附件是否上传）:有异常则退出，并移除loading图标
-  if (!idlStore.isProofOk()) {
+    // 保存数据
+    const result = await api.insertHrResume(JSON.stringify(form.value));
+    if (result) {
+      // 提示异常信息
+      Notify(result);
+    } else {
+      Dialog.alert({
+        title: '保存成功',
+        message: '您已成功上传您的个人简历资料。',
+        theme: 'round-button',
+      }).then(() => {
+        // on close
+        router.push('/HrResumeView'); // 返回上一层
+        localStorage.removeItem('resume_info'); //清除localstorage信息
+      });
+    }
+  } catch (error: any) {
+    Notify(error.toString());
+  } finally {
     globalOverlay.value = false;
-    return;
   }
-
-  // 处理附件，加水印压缩
-  await idlStore.zipAddWater();
-
-  // 保存数据
-  const result = await api.saveIdlData(JSON.stringify(form.value));
-  if (result) {
-    // 提示异常信息
-    Notify(result);
-  } else {
-    Dialog.alert({
-      title: '保存成功',
-      message: '您已成功上传您的个人简历资料。',
-      theme: 'round-button',
-    }).then(() => {
-      // on close
-      router.push('/HrResumeView'); // 返回上一层
-    });
-  }
-  globalOverlay.value = false;
 };
-
-// TODO:手机号验证码
-const sms = ref('');
-
-const placeholder = '无需填写，由身份证上传自动带出';
+//#endregion
 
 //#region test
 // 通过 ref 可以获取到 Form 实例并调用实例方法：重置验证信息，获取表单值等
@@ -179,18 +202,12 @@ nextTick(() => {
     </van-nav-bar>
 
     <!-- 表单收集面试者基本信息 -->
-    <van-form @submit="onSubmit" @failed="onFailed" ref="refForm" scroll-to-error>
+    <van-form @submit="onsubmit" @failed="onFailed" ref="refForm" scroll-to-error>
       <!--validate-first:是否在某一项校验不通过时停止校验，scroll-to-error移动到表单验证失败的控件，accordion指手风琴折叠面板，且activeName需要是string-->
       <!-- 折叠面板 -->
       <collapse v-model="activeName">
         <!-- 全局遮罩层 -->
-        <van-overlay :show="globalOverlay">
-          <div class="wrapper" @click.stop>
-            <van-loading class="block" type="spinner" color="white" size="60px" vertical>
-              加载中,请稍后...
-            </van-loading>
-          </div>
-        </van-overlay>
+        <base-loading :global-loading="globalOverlay"></base-loading>
 
         <!-- 1：身份证上传 -->
         <collapse-item name="1">
@@ -291,15 +308,12 @@ nextTick(() => {
               validate-type="email"
             />
 
-            <!-- start:手机号码验证 -->
-            <base-field v-model="base.telphone" label="手机号">
-              <van-button size="small" type="primary">发送验证码</van-button>
-            </base-field>
-            <base-field v-model="sms" label="验证码">
-              <van-button size="small" type="primary">点击验证</van-button>
-            </base-field>
-            <!-- end:手机号码验证 -->
-
+            <base-field
+              v-model="base.telphone"
+              label="手机号"
+              validate-type="phone"
+              placeholder="请填写本人手机号码，用于短信验证"
+            />
             <base-field v-model="base.height" label="身高" validate-type="number"> Cm </base-field>
             <base-field v-model="base.weight" label="体重" validate-type="number"> Kg </base-field>
             <base-picker
@@ -329,8 +343,62 @@ nextTick(() => {
           </van-cell-group>
         </collapse-item>
 
-        <!-- 4：家庭成员信息 -->
+        <!-- 4：学历信息 -->
         <collapse-item name="4">
+          <template #title>
+            <div><van-icon name="invitation" color="#014A94" /> 学历信息(最高)</div>
+          </template>
+
+          <!-- 删除新增按钮，学历目前是单个，做多个学历在附件上传方面容易有bug-->
+          <!-- <van-cell-group inset>
+            <van-cell>
+              <template #title>
+                <van-icon
+                  name="add-o"
+                  size="20"
+                  style="padding-left: 88%"
+                  @click="idlStore.addEducations"
+                />
+              </template>
+              <template #right-icon>
+                <van-icon name="delete-o" size="20" @click="idlStore.delEducations" />
+              </template>
+            </van-cell>
+          </van-cell-group> -->
+
+          <!-- 学历信息detail -->
+          <van-cell-group inset v-for="(item, index) in education" :key="index">
+            <base-field v-model="item.school" label="学校名称" />
+            <base-picker
+              v-model="item.education"
+              label="学历"
+              :columns="paramStore.educationList"
+            />
+            <base-field v-model="item.major" label="专业" />
+            <base-date-picker v-model="item.enrollment_date" label="入学时间" />
+            <base-date-picker v-model="item.graduation_date" label="毕业时间" />
+            <base-picker
+              v-model="item.graduated"
+              label="是否毕业"
+              :columns="paramStore.judgeList"
+            />
+            <!-- 如果已经毕业，则毕业证书必须上传 -->
+            <van-field label="证书上传" :required="item.graduated == 'Y' ? true : false">
+              <template #input>
+                <van-uploader
+                  v-model="educationFile"
+                  :max-size="maxSize"
+                  @oversize="onOversize"
+                  multiple
+                  :max-count="3"
+                />
+              </template>
+            </van-field>
+          </van-cell-group>
+        </collapse-item>
+
+        <!-- 5：家庭成员信息 -->
+        <collapse-item name="5">
           <template #title>
             <div> <van-icon name="friends" color="#014A94" /> 家庭成员信息 </div>
           </template>
@@ -367,8 +435,8 @@ nextTick(() => {
           </van-cell-group>
         </collapse-item>
 
-        <!-- 5：三等亲信息 -->
-        <collapse-item name="5">
+        <!-- 6：三等亲信息 -->
+        <collapse-item name="6">
           <template #title>
             <div> <van-icon name="manager" color="#014A94" /> 三等亲信息 </div>
           </template>
@@ -419,60 +487,6 @@ nextTick(() => {
               :columns="paramStore.groupCompanyList"
             />
             <base-field v-model="item.relationship" label="与其关系" />
-          </van-cell-group>
-        </collapse-item>
-
-        <!-- 6：学历信息 -->
-        <collapse-item name="6">
-          <template #title>
-            <div><van-icon name="invitation" color="#014A94" /> 学历信息(最高)</div>
-          </template>
-
-          <!-- 删除新增按钮，学历目前是单个，做多个学历在附件上传方面容易有bug-->
-          <!-- <van-cell-group inset>
-            <van-cell>
-              <template #title>
-                <van-icon
-                  name="add-o"
-                  size="20"
-                  style="padding-left: 88%"
-                  @click="idlStore.addEducations"
-                />
-              </template>
-              <template #right-icon>
-                <van-icon name="delete-o" size="20" @click="idlStore.delEducations" />
-              </template>
-            </van-cell>
-          </van-cell-group> -->
-
-          <!-- 学历信息detail -->
-          <van-cell-group inset v-for="(item, index) in education" :key="index">
-            <base-field v-model="item.school" label="学校名称" />
-            <base-picker
-              v-model="item.education"
-              label="学历"
-              :columns="paramStore.educationList"
-            />
-            <base-field v-model="item.major" label="专业" />
-            <base-date-picker v-model="item.enrollment_date" label="入学时间" />
-            <base-date-picker v-model="item.graduation_date" label="毕业时间" />
-            <base-picker
-              v-model="item.graduated"
-              label="是否毕业"
-              :columns="paramStore.judgeList"
-            />
-            <!-- 如果已经毕业，则毕业证书必须上传 -->
-            <van-field label="证书上传" :required="item.graduated == 'Y' ? true : false">
-              <template #input>
-                <van-uploader
-                  v-model="educationFile"
-                  :max-size="maxSize"
-                  @oversize="onOversize"
-                  multiple
-                  :max-count="3"
-                />
-              </template>
-            </van-field>
           </van-cell-group>
         </collapse-item>
 
@@ -567,25 +581,44 @@ nextTick(() => {
             <base-field v-model="item.salary" label="薪水" validate-type="number" />
           </van-cell-group>
         </collapse-item>
-
-        <!-- 9：手写签名 -->
-        <collapse-item name="9">
-          <template #title>
-            <div><van-icon name="font" color="#014A94" /> 手写签名</div>
-          </template>
-
-          <!-- 手写签名组件 -->
-          <van-cell-group inset>
-            <base-esign title="个人签名" @getImg="getImg"></base-esign>
-          </van-cell-group>
-        </collapse-item>
       </collapse>
 
-      <!-- 10:同意收集个人信息勾选框 -->
+      <!-- 9：同意收集个人信息勾选框 -->
       <accept-collect v-model="showPopup" v-model:accept="base.accept_flag" />
 
+      <!-- 10：手写签名组件 -->
+      <base-esign title="签名：" @getImg="getImg"></base-esign>
+
+      <!-- 手机号码验证弹框 -->
+      <div v-if="showDialog">
+        <van-dialog
+          v-model:show="showDialog"
+          title="手机短信验证码"
+          :before-close="confirmDialog"
+          :overlay="false"
+          theme="round-button"
+          confirmButtonText="验证"
+        >
+          <div style="margin: 10px">
+            <!-- 密码输入框 -->
+            <van-password-input
+              :value="inputCode"
+              :focused="showKeyboard"
+              @focus="showKeyboard = true"
+            />
+          </div>
+        </van-dialog>
+
+        <!-- 数字键盘 -->
+        <van-number-keyboard
+          v-model="inputCode"
+          :show="showKeyboard"
+          @blur="showKeyboard = false"
+        />
+      </div>
+
       <!-- 提交按钮 -->
-      <div style="margin: 10px">
+      <div style="margin: 20px 20px 30px">
         <van-button
           round
           block
@@ -630,17 +663,13 @@ nextTick(() => {
 .van-nav-bar {
   margin-bottom: 0px;
 }
-
-// loading样式
-.wrapper {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
+:deep(.van-dialog__header) {
+  color: white;
 }
-.block {
-  width: 120px;
-  height: 120px;
-  // background-color: #fff;
+:deep(.van-dialog) {
+  background-color: #3c3c3c87;
+}
+:deep(.van-action-bar) {
+  background-color: rgb(60 60 60 / 0%);
 }
 </style>

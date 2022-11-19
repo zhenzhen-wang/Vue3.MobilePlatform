@@ -10,7 +10,7 @@ const emit = defineEmits(['getImg']);
 // popup显示状态
 const show: Ref<boolean> = ref(false);
 
-const bgColor = ref(''); //rgb(235 235 235 / 50%)
+const bgColor = ref('rgb(235 235 235 / 60%)'); //rgb(235 235 235 / 50%)
 //签名base64源码
 const signPic = ref<string>();
 
@@ -41,14 +41,18 @@ const handleGenerate = () => {
 </script>
 
 <template>
-  <van-cell :title="title">
+  <van-cell :title="title" style="color: grey">
     <template #value>
       <van-button is-link type="primary" size="small" @click="show = true"> 点击签名 </van-button>
     </template>
   </van-cell>
 
   <!-- 签名展示区 -->
-  <img :src="signPic" v-show="signPic" style="width: 100%; height: 200px" />
+  <img
+    :src="signPic"
+    v-show="signPic"
+    style="width: 96%; height: 200px; margin: 10px 2% 0; border-radius: 10px"
+  />
 
   <!-- 点击签名调出此popup窗口签名 -->
   <van-popup v-model:show="show" round style="width: 95%; height: 95%; display: flex">
@@ -84,6 +88,7 @@ const handleGenerate = () => {
   align-items: center;
   button {
     transform: rotate(90deg);
+    width: 60px;
   }
 }
 

@@ -26,8 +26,8 @@ const list: GridList[] = [
 <template>
   <!-- closeable 模式，在右侧显示关闭按钮 -->
   <van-notice-bar mode="closeable"
-    >昆达电脑科技欢迎您！了解详情请咨询HR电话：0513-88888888888888</van-notice-bar
-  >
+    >昆达电脑科技欢迎您！了解详情请咨询HR电话：0512-57367777+2816。
+  </van-notice-bar>
   <!-- 标题 -->
   <!-- <van-nav-bar>
     <template #title>

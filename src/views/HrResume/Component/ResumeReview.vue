@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { Collapse, CollapseItem } from 'vant';
-import { onBeforeMount, ref } from 'vue';
+import { Collapse, CollapseItem, Dialog } from 'vant';
+import { onUpdated, ref } from 'vue';
 import { api } from '@/api';
 // import { storeToRefs } from 'pinia';
 
-// 父组件传过来的身份证号
+// 父组件传过来的人员person_id
 const props = defineProps<{ id: string }>();
 
 // 面板状态
-const activeName = ref(['1', '2', '3', '4', '5', '6', '7']);
+const activeName = ref(['1', '2', '3', '4', '5', '6', '7', '8']);
 
 //#region 设置全局样式配置
 // themeVars 内的值会被转换成对应 CSS 变量
@@ -40,10 +40,14 @@ let relation = ref();
 let education = ref();
 let work = ref();
 let family = ref();
+let comment = ref();
 
-onBeforeMount(async () => {
+const initialData = async () => {
+  idList.value = [];
+
   // 根据id号获得详细信息
-  const data = await api.queryDetail(props.id, '');
+  const data = await api.getDetailByIdStatus(props.id, '');
+
   //#region 格式化查询到的数据
   //身份证信息，格式化日期，去掉时分秒
   data.hr_base_info.birthday = data.hr_base_info.birthday?.substr(0, 10);
@@ -65,11 +69,18 @@ onBeforeMount(async () => {
   }
   //#endregion
 
+  // 根据id号查询是否在黑名单
+  const res = await api.getBlackInfo(props.id);
+  //当被选中且有黑名单信息，则跳出黑名单提示框
+  //如果有黑名单信息，'黑名單:-'后面会接着一串黑名单信息：2022/04/13 12:40:08mhr_msl_ps_employee_hei
+  if (res.indexOf('黑名單:-舊工號') < 0) Dialog({ message: '此人在黑名单，请考量！' });
+
   base.value = data.hr_base_info;
   relation.value = data.hr_relationship;
   education.value = data.hr_education;
   work.value = data.hr_work_experience;
   family.value = data.hr_family_info;
+  comment.value = data.hr_manager_comment;
 
   // 将身份证照片放入idList数组，其余的放入attachList
   for (const item of data.hr_attachment) {
@@ -83,6 +94,11 @@ onBeforeMount(async () => {
     }
   }
   loading.value = false;
+};
+initialData();
+
+onUpdated(() => {
+  initialData();
 });
 </script>
 
@@ -203,6 +219,7 @@ onBeforeMount(async () => {
 
             <!-- 工作经验 detail -->
             <van-cell-group v-for="(item, index) in work" :key="index" style="margin-top: 5px">
+              <van-cell title="主管姓名" :value="item.manager_name" />
               <van-cell title="公司姓名" :value="item.company" />
               <van-cell title="职位" :value="item.duty" />
               <van-cell title="开始时间" :value="item.work_fromdate" />
@@ -242,13 +259,22 @@ onBeforeMount(async () => {
           </collapse-item>
 
           <!-- 8：主管评价 -->
-          <collapse-item name="8" v-if="false">
+          <collapse-item name="8">
             <template #title>
               <div><van-icon name="invitation" color="#014A94" /> 主管评价</div>
             </template>
 
-            <van-cell-group v-for="(item, index) in education" :key="index" style="margin-top: 5px">
-              <van-cell title="性格" :value="item.major" />
+            <van-cell-group v-for="(item, index) in comment" :key="index" style="margin-top: 5px">
+              <van-cell title="性格特征" :value="item.character" />
+              <van-cell title="外语能力" :value="item.english_talent" />
+              <van-cell title="电脑能力" :value="item.computer_talent" />
+              <van-cell title="工作经历" :value="item.work_experience" />
+              <van-cell title="专业能力" :value="item.profession_talent" />
+              <van-cell title="管理能力" :value="item.manage_talent" />
+              <van-cell title="公司别" :value="item.company" />
+              <van-cell title="部门名称" :value="item.dept_name" />
+              <van-cell title="是否需年资" :value="item.add_work_year" />
+              <!-- <van-cell title="续年资" :value="item.out_work_year" v-if="item.add_work_year" /> -->
             </van-cell-group>
           </collapse-item>
         </collapse>
@@ -263,7 +289,7 @@ onBeforeMount(async () => {
   margin-bottom: 10px;
 }
 
-// 如果想修改vant自带的样式，1：css用父类>>>想要修改的子类  2: less及scss用/deep/或者::v-deep
+// 如果想修改vant自带的样式，1：css用'父类'>>>'想要修改的子类'  2: less及scss用'/deep/'或者'::v-deep'
 :deep(.van-cell__value) {
   flex: 2;
 }

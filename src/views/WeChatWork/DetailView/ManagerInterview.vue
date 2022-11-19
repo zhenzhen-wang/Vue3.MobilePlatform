@@ -9,8 +9,10 @@ import BaseCheckboxList from '../../../components/List/BaseCheckboxList.vue';
 import type { dataList } from '@/types/base-component';
 import ResumeReview from '../../HrResume/Component/ResumeReview.vue';
 import { api } from '@/api';
+import { useRouter } from 'vue-router';
 
-const onClickLeft = () => history.back();
+const router = useRouter();
+const onClickLeft = () => router.push('/HomeList'); //history.back();
 
 // 获取填写页面的所有参数
 const paramStore = useParamStore();
@@ -32,12 +34,14 @@ const checkedList = ref<string[]>([]);
 const loading = ref(false);
 
 const onSubmit = async () => {
+  //清空面试记录
+  Object.keys(result.value).forEach((k) => (result.value[k as keyof typeof result.value] = ''));
   list.value = [];
   checkedList.value = [];
   loading.value = true;
 
-  const result = await api.getEmployeeList(search.value);
-  list.value.push(...result);
+  const res = await api.getEmployeeList(search.value);
+  list.value.push(...res);
   if (list.value.length == 0) {
     Notify('未查询到符合条件人员资料');
   }
@@ -53,38 +57,54 @@ const getCurrentId = (id: string) => {
 
 // 回填的结果
 const result = ref({
-  companyCodeVal: '', // 公司别代码
-  isAddWorkYearVal: 'N', // 是否续年资
-  deptName: '', // 部门名称
+  company: '', // 公司别代码
+  add_work_year: 'N', // 是否续年资
+  dept_name: '', // 部门名称
   character: '', // 性格
-  englishTalent: '',
-  computerTalent: '',
-  workExperience: '',
-  professionTalent: '',
-  manageTalent: '',
+  english_talent: '',
+  computer_talent: '',
+  work_experience: '',
+  profession_talent: '',
+  manage_talent: '',
+  status: '',
+  manager_empno: paramStore.userId,
 });
 
-// 录用通过，参数：idcardno，status(idl:2,dl:3) 及公司别评价等，单独接口
-const confirm = (values: object) => {
-  console.log('submit1', values);
-};
-
-// 不予录用，参数：idcardno，status(6)，delete（是否删除其资料）：删 与hr共用接口（提示是否确认删除其资料）
+// 点击按钮，录用或不录用
 let globalLoading = ref(false);
-const cancel = async () => {
+const buttonClick = async (type: string) => {
   if (!checkedList.value.length) {
     Notify('请点击选中人员！');
     return;
   }
+  let resResult;
   globalLoading.value = true;
-  const updateParams = { idCardNoList: checkedList.value, status: '2', delete: true };
-  const result = await api.updateStatus(updateParams);
-  if (result !== 'OK') {
-    Notify(result);
+
+  // 不予录用，参数：idcardno，status(6)，delete（是否删除其资料）：删 与hr共用接口（提示是否确认删除其资料）
+  if (type == 'cancel') {
+    const updateParams = {
+      idCardNoList: checkedList.value,
+      status: '2',
+      delete: false,
+      empno: paramStore.userId,
+    };
+    resResult = await api.updateStatus(updateParams);
+  } else {
+    // 录用通过，参数：idcardno，status(idl:2,dl:3) 及公司别评价等，单独接口
+    result.value.status = search.value.work_type == 'IDL' ? '2' : '3';
+    result.value = Object.assign(result.value, { id_card_no: checkedList.value }); //将身份证数组拼接传递给后台
+    resResult = await api.insertComment(result.value);
+  }
+
+  if (resResult !== 'OK') {
+    Notify(resResult);
   } else {
     Notify({ type: 'success', message: '操作成功' });
   }
   globalLoading.value = false;
+  //清空面试记录
+  checkedList.value = [''];
+  Object.keys(result.value).forEach((k) => (result.value[k as keyof typeof result.value] = ''));
 };
 </script>
 
@@ -158,32 +178,33 @@ const cancel = async () => {
     <resume-review :id="currentCheckBoxId" />
   </base-checkbox-list>
 
-  <van-form @submit="confirm">
+  <van-form @submit="buttonClick">
     <!-- 面试记录 -->
     <van-cell-group inset :style="{ 'margin-top': '15px' }" v-show="list.length">
       <van-divider content-position="left"> 面试记录 </van-divider>
 
       <!-- 公司别、部门名称，IDL/DL都有 -->
       <base-picker
-        v-model="result.companyCodeVal"
+        v-model="result.company"
         name="companyCode"
         label="公司别"
         placeholder="请选择公司别"
         :columns="paramStore.companyCodeList"
       ></base-picker>
       <van-field
-        v-model="result.deptName"
+        v-model="result.dept_name"
         name="deptName"
         label="部门名称"
         placeholder="请输入部门名称或代码"
         required
         :rules="[{ required: true, message: '请填写部门名称或代码' }]"
+        clearable
       />
 
       <!-- 主管对能力的评价，IDL特有 -->
       <!-- 1.是否續年資 -->
       <base-picker
-        v-model="result.isAddWorkYearVal"
+        v-model="result.add_work_year"
         v-if="search.work_type === 'IDL'"
         name="isAddWorkYear"
         label="是否續年資"
@@ -202,10 +223,11 @@ const cancel = async () => {
         placeholder="请填写性格特征"
         :rules="[{ required: true, message: '请填写性格特征' }]"
         required
+        clearable
       />
 
       <van-field
-        v-model="result.englishTalent"
+        v-model="result.english_talent"
         v-if="search.work_type === 'IDL'"
         name="englishTalent"
         label="外語應用能力"
@@ -215,10 +237,11 @@ const cancel = async () => {
         placeholder="请填写外語應用能力"
         :rules="[{ required: true, message: '请填写外語應用能力' }]"
         required
+        clearable
       />
 
       <van-field
-        v-model="result.computerTalent"
+        v-model="result.computer_talent"
         v-if="search.work_type === 'IDL'"
         name="computerTalent"
         label="電腦操作能力"
@@ -228,10 +251,11 @@ const cancel = async () => {
         placeholder="请填写電腦操作能力"
         :rules="[{ required: true, message: '请填写電腦操作能力' }]"
         required
+        clearable
       />
 
       <van-field
-        v-model="result.workExperience"
+        v-model="result.work_experience"
         v-if="search.work_type === 'IDL'"
         name="workExperience"
         label="工作經驗"
@@ -241,10 +265,11 @@ const cancel = async () => {
         placeholder="请填写工作經驗"
         :rules="[{ required: true, message: '请填写工作經驗' }]"
         required
+        clearable
       />
 
       <van-field
-        v-model="result.professionTalent"
+        v-model="result.profession_talent"
         v-if="search.work_type === 'IDL'"
         name="professionTalent"
         label="專業能力"
@@ -254,10 +279,11 @@ const cancel = async () => {
         placeholder="请填写專業能力"
         :rules="[{ required: true, message: '请填写專業能力' }]"
         required
+        clearable
       />
 
       <van-field
-        v-model="result.manageTalent"
+        v-model="result.manage_talent"
         v-if="search.work_type === 'IDL'"
         name="manageTalent"
         label="管理能力"
@@ -267,6 +293,7 @@ const cancel = async () => {
         placeholder="请填写管理能力"
         :rules="[{ required: true, message: '请填写管理能力' }]"
         required
+        clearable
       />
 
       <!-- 面试通过按钮 -->
@@ -275,7 +302,7 @@ const cancel = async () => {
       </div>
       <!-- 不予录用按钮 -->
       <div style="margin: 16px">
-        <van-button round block type="danger" @click="cancel"> 不予录用 </van-button>
+        <van-button round block type="danger" @click="buttonClick('cancel')"> 不予录用 </van-button>
       </div>
     </van-cell-group>
   </van-form>
