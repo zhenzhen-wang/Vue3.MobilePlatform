@@ -7,8 +7,9 @@ import BaseRadioList from '../../../components/List/BaseRadioList.vue';
 import { api } from '@/api';
 import BaseLoading from '../../../components/Utils/BaseLoading.vue';
 import { useParamStore } from '@/stores/parameters';
+import router from '@/router';
 
-const onClickLeft = () => history.back();
+const onClickLeft = () => router.push('/HomeList'); //history.back();
 
 // 获取填写页面的所有参数
 const paramStore = useParamStore();

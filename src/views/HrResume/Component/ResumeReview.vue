@@ -265,15 +265,16 @@ onUpdated(() => {
             </template>
 
             <van-cell-group v-for="(item, index) in comment" :key="index" style="margin-top: 5px">
+              <van-cell title="主管" :value="item.manager_name" />
+              <van-cell title="录用公司" :value="item.company" />
+              <van-cell title="录用部门" :value="item.dept_name" />
+              <van-cell title="是否需年资" :value="item.add_work_year" />
               <van-cell title="性格特征" :value="item.character" />
               <van-cell title="外语能力" :value="item.english_talent" />
               <van-cell title="电脑能力" :value="item.computer_talent" />
               <van-cell title="工作经历" :value="item.work_experience" />
               <van-cell title="专业能力" :value="item.profession_talent" />
               <van-cell title="管理能力" :value="item.manage_talent" />
-              <van-cell title="公司别" :value="item.company" />
-              <van-cell title="部门名称" :value="item.dept_name" />
-              <van-cell title="是否需年资" :value="item.add_work_year" />
               <!-- <van-cell title="续年资" :value="item.out_work_year" v-if="item.add_work_year" /> -->
             </van-cell-group>
           </collapse-item>

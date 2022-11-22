@@ -12,17 +12,16 @@ onBeforeMount(async () => {
     // code用于获取登录者的userid
     const route = useRoute();
     const { code } = route.query;
+    const paramStore = useParamStore();
 
-    //如果获取到code，继续获取userid
-    if (code) {
+    //如果获取到code且userid不为空，继续获取userid
+    if (code && !paramStore.userId) {
       // 向公司后端api发起请求企微的accesstoken
       const token = await api.getAccessToken();
 
       // 通过accesstoken和code，通过前端程式直接向微信接口发起请求
       const res = await api.getUserInfo(token, code as string);
-
       // 将userid写入参数store中，便于全局调用
-      const paramStore = useParamStore();
       paramStore.setUserId(res.data.userid);
     }
   } catch (err: any) {

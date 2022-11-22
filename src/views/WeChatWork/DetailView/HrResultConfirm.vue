@@ -10,10 +10,9 @@ import ResumeReview from '../../HrResume/Component/ResumeReview.vue';
 import BaseLoading from '../../../components/Utils/BaseLoading.vue';
 import { api } from '@/api';
 import BaseField from '../../../components/Form/BaseField.vue';
-import { useRouter } from 'vue-router';
+import router from '@/router';
 
-const router = useRouter();
-const onClickLeft = () => router.back();
+const onClickLeft = () => router.push('/HomeList'); //history.back();
 
 // 获取页面所需的所有参数
 const paramStore = useParamStore();
@@ -72,6 +71,7 @@ const result = ref({
   job_degree: '', // 职等
   arrival_date: '', // 导致日期
   id_card_no: '',
+  hr_empno: '',
 });
 
 // 点击按钮，录用或不录用
@@ -96,6 +96,7 @@ const buttonClick = async (type: string) => {
   } else {
     // 完成录用，参数：idcardno，status(idl:3) 及职等职称等，单独接口
     result.value.id_card_no = checked.value;
+    result.value.hr_empno = paramStore.userId; //因为在查询前已经重置了result对象，所以需要给其赋值
     resResult = await api.insertResult(result.value);
   }
 

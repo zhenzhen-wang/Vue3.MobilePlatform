@@ -9,9 +9,8 @@ import BaseCheckboxList from '../../../components/List/BaseCheckboxList.vue';
 import type { dataList } from '@/types/base-component';
 import ResumeReview from '../../HrResume/Component/ResumeReview.vue';
 import { api } from '@/api';
-import { useRouter } from 'vue-router';
+import router from '@/router';
 
-const router = useRouter();
 const onClickLeft = () => router.push('/HomeList'); //history.back();
 
 // 获取填写页面的所有参数
@@ -58,7 +57,7 @@ const getCurrentId = (id: string) => {
 // 回填的结果
 const result = ref({
   company: '', // 公司别代码
-  add_work_year: 'N', // 是否续年资
+  add_work_year: '', // 是否续年资
   dept_name: '', // 部门名称
   character: '', // 性格
   english_talent: '',
@@ -67,7 +66,7 @@ const result = ref({
   profession_talent: '',
   manage_talent: '',
   status: '',
-  manager_empno: paramStore.userId,
+  manager_empno: '',
 });
 
 // 点击按钮，录用或不录用
@@ -84,7 +83,7 @@ const buttonClick = async (type: string) => {
   if (type == 'cancel') {
     const updateParams = {
       idCardNoList: checkedList.value,
-      status: '2',
+      status: '6',
       delete: false,
       empno: paramStore.userId,
     };
@@ -92,7 +91,11 @@ const buttonClick = async (type: string) => {
   } else {
     // 录用通过，参数：idcardno，status(idl:2,dl:3) 及公司别评价等，单独接口
     result.value.status = search.value.work_type == 'IDL' ? '2' : '3';
-    result.value = Object.assign(result.value, { id_card_no: checkedList.value }); //将身份证数组拼接传递给后台
+    result.value.manager_empno = paramStore.userId;
+    //将身份证数组拼接传递给后台，由于其为数组，直接写在result数组中会导致重置时报错。
+    result.value = Object.assign(result.value, {
+      id_card_no: checkedList.value,
+    });
     resResult = await api.insertComment(result.value);
   }
 
