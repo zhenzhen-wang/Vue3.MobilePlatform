@@ -1,6 +1,16 @@
 # Vue3.MobilePlatform
 
-This template should help get you started developing with Vue 3 in Vite.
+## 项目说明：
+1. 项目封装了多个自定义组件，如：手机号码验证，手写签名等
+2. 目录component中组件为自定义组件，根据vant做了二次封装，都是以base开头
+3. directive指令：permission，用于控制不同权限人员UI的可见范围
+4. 在路由导航守卫中，构造企业微信网页授权链接，获取code
+5. 在strore/parameter中，通过pinia对企业微信的uerid做持久化，保存于sessionStorage中
+6. utils/http中对Axios做了二次封装，便于使用
+7. 请求企业新接口，借助nginx做转发解决跨域，本项目后端api已做跨域处理
+8. 编写docekfile文件，将程式发布到linux docker中
+9. 项目运行UI界面如下文档：
+[项目案例UI展示.docx](https://github.com/zhenzhen-wang/Vue3.MobilePlatform/files/10191392/UI.docx)
 
 ## Recommended IDE Setup
 
@@ -44,16 +54,4 @@ npm run build
 ```sh
 npm run lint
 ```
-
-## 项目说明：
-1. 项目封装了多个自定义组件，如：手机号码验证，手写签名等
-2. 目录component中组件为自定义组件，根据vant做了二次封装，都是以base开头
-3. directive指令：permission，用于控制不同权限人员UI的可见范围
-4. 在路由导航守卫中，构造企业微信网页授权链接，获取code
-5. 在strore/parameter中，通过pinia对企业微信的uerid做持久化，保存于sessionStorage中
-6. utils/http中对Axios做了二次封装，便于使用
-7. 请求企业新接口，借助nginx做转发解决跨域，本项目后端api已做跨域处理
-8. 编写docekfile文件，将程式发布到linux docker中
-9. 项目运行UI界面如下文档：
-[项目案例UI展示.docx](https://github.com/zhenzhen-wang/Vue3.MobilePlatform/files/10191392/UI.docx)
 
