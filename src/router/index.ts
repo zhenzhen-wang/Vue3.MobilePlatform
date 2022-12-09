@@ -114,10 +114,10 @@ router.beforeEach((to) => {
   // 生产环境
   if (import.meta.env.PROD && to.path == '/HomeList' && !to.query.code && !paramStore.userId) {
     // 当前企业的 corp_id
-    const corp_id = 'wx4a4723d207da25fe';
+    const corp_id = 'wx4a******';
 
     // 重定向 URL，地址必须是在企业微信应用中配置的可信安全域名,window.location.href + 'HomeList'
-    const redirect_uri = encodeURI('http://wechat-resume.mitac-mkl.com.cn:86/HomeList');
+    const redirect_uri = encodeURI('http://wechat-***********:86/HomeList');
 
     // 授权链接 URL
     const new_url = `https://open.weixin.qq.com/connect/oauth2/authorize?appid=${corp_id}&redirect_uri=${redirect_uri}&response_type=code&scope=snsapi_base&state=STATE#wechat_redirect`;
